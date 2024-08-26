@@ -12,7 +12,10 @@ public interface InvoiceService {
 
     ResponseDTO getAllInvoices();
 
-    ResponseDTO payInvoice(Long id, InvoicePaymentRequestDTO invoicePaymentRequestDTO);
+    ResponseDTO payInvoice(Long invoiceId, InvoicePaymentRequestDTO invoicePaymentRequestDTO);
 
     ResponseDTO processOverduePayment(InvoiceOverduePaymentRequestDTO invoiceOverduePaymentRequestDTO);
+
+    ResponseDTO deleteInvoice(Long invoiceId);
+
 }

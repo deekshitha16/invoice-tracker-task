@@ -16,7 +16,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import java.time.LocalDate;
@@ -24,13 +23,13 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(SpringExtension.class)
-@SpringBootTest
 class InvoiceServiceImplTest {
 
     @Mock
@@ -59,16 +58,19 @@ class InvoiceServiceImplTest {
         when(invoiceDao.saveInvoice(any())).thenReturn(invoiceEntity.getId());
         ResponseDTO responseDTO = invoiceService.createInvoice(requestDTO);
         assertNotNull(responseDTO);
-        assertEquals(1L, ((InvoiceCreateResponseDTO) responseDTO.getData()).getInvoiceId());
+        InvoiceCreateResponseDTO responseData = (InvoiceCreateResponseDTO) responseDTO.getData();
+        assertEquals(1L, responseData.getInvoiceId());
     }
 
     @Test
     void testGetAllInvoices() {
         InvoiceEntity invoiceEntity = createTestInvoice(1L, 200.0, 0.0, InvoiceStatusEnum.PENDING, LocalDate.now().plusDays(20));
-        when(invoiceDao.getAllInvoices()).thenReturn(List.of(invoiceEntity));
+        when(invoiceDao.getAllInvoices(true)).thenReturn(List.of(invoiceEntity));
         ResponseDTO responseDTO = invoiceService.getAllInvoices();
         assertNotNull(responseDTO);
-        assertEquals(invoiceEntity.getId(), ((InvoiceResponseDTO) responseDTO.getData()).getInvoiceId());
+        List<InvoiceResponseDTO> invoiceList = (List<InvoiceResponseDTO>) responseDTO.getData();
+        assertFalse(invoiceList.isEmpty());
+        assertEquals(invoiceEntity.getId(), invoiceList.get(0).getInvoiceId());
     }
 
     @Test
@@ -76,15 +78,18 @@ class InvoiceServiceImplTest {
         Long invoiceId = 1L;
         InvoicePaymentRequestDTO paymentRequestDTO = new InvoicePaymentRequestDTO();
         paymentRequestDTO.setAmount(50.0);
-        when(invoiceDao.getInvoiceById(invoiceId)).thenReturn(Optional.empty());
+        
+     // invalid invoice Id
+        when(invoiceDao.getInvoiceById(invoiceId,true)).thenReturn(Optional.empty());
         assertThrows(InvoiceNotFoundException.class, () -> invoiceService.payInvoice(invoiceId, paymentRequestDTO));
 
+        // valid invoice Id
         InvoiceEntity invoiceEntity = createTestInvoice(1L, 200.0, 0.0, InvoiceStatusEnum.PENDING, LocalDate.now().plusDays(20));
-        when(invoiceDao.getInvoiceById(invoiceId)).thenReturn(Optional.of(invoiceEntity));
+        when(invoiceDao.getInvoiceById(invoiceId,true)).thenReturn(Optional.of(invoiceEntity));
         when(invoiceDao.saveInvoice(invoiceEntity)).thenReturn(invoiceId);
         ResponseDTO responseDTO = invoiceService.payInvoice(invoiceId, paymentRequestDTO);
         assertNotNull(responseDTO);
-        assertEquals(1L, ((InvoiceCreateResponseDTO) responseDTO.getData()).getInvoiceId());
+        assertEquals(1L, ((InvoiceResponseDTO) responseDTO.getData()).getInvoiceId());
     }
 
     @Test
@@ -95,7 +100,7 @@ class InvoiceServiceImplTest {
         InvoiceEntity unpaidInvoiceEntity = createTestInvoice(1L, 200.0, 0.0, InvoiceStatusEnum.PENDING, LocalDate.now().minusDays(10));
         InvoiceEntity partiallyPaidInvoiceEntity = createTestInvoice(2L, 200.0, 100.0, InvoiceStatusEnum.PENDING, LocalDate.now().minusDays(10));
         List<InvoiceEntity> overdueInvoices = List.of(unpaidInvoiceEntity, partiallyPaidInvoiceEntity);
-        when(invoiceDao.getAllOverdueInvoices(any(), any()))
+        when(invoiceDao.getAllOverdueInvoices(LocalDate.now(), InvoiceStatusEnum.PENDING,true))
                 .thenReturn(overdueInvoices);
 
         ResponseDTO responseDTO = invoiceService.processOverduePayment(overduePaymentRequest);
@@ -103,5 +108,7 @@ class InvoiceServiceImplTest {
         assertEquals(MessageConstant.OVERDUE_INVOICE_UPDATED, responseDTO.getMessage());
 
     }
+
+
 
 }

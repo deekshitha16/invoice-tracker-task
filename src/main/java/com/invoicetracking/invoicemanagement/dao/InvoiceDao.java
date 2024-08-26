@@ -22,16 +22,16 @@ public class InvoiceDao {
         return invoiceRepository.save(invoiceEntity).getId();
     }
 
-    public List<InvoiceEntity> getAllInvoices() {
-        return invoiceRepository.findAll();
+    public List<InvoiceEntity> getAllInvoices(boolean activeFlag) {
+        return invoiceRepository.findAllByIsActive(activeFlag);
     }
 
-    public Optional<InvoiceEntity> getInvoiceById(Long id) {
-        return invoiceRepository.findById(id);
+    public Optional<InvoiceEntity> getInvoiceById(Long id,boolean activeFlag) {
+        return invoiceRepository.findByIdAndIsActive(id,activeFlag);
     }
 
-    public List<InvoiceEntity> getAllOverdueInvoices(LocalDate currentDate, InvoiceStatusEnum status) {
-        return invoiceRepository.findByDueDateBeforeAndStatus(currentDate, status);
+    public List<InvoiceEntity> getAllOverdueInvoices(LocalDate currentDate, InvoiceStatusEnum status, boolean activeFlag) {
+        return invoiceRepository.findByDueDateBeforeAndStatusAndIsActive(currentDate, status, activeFlag);
     }
 
     @Transactional

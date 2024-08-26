@@ -74,6 +74,6 @@
 				</configuration>
 			</plugin>
 		</plugins>
+		<finalName>invoice-tracker-management</finalName>
 	</build>
-
 </project>

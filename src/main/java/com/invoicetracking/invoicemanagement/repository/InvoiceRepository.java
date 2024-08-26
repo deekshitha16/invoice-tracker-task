@@ -7,10 +7,14 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface InvoiceRepository extends JpaRepository<InvoiceEntity, Long> {
 
+    List<InvoiceEntity> findAllByIsActive(boolean activeFlag);
 
-    List<InvoiceEntity> findByDueDateBeforeAndStatus(LocalDate currentDate, InvoiceStatusEnum status);
+    Optional<InvoiceEntity> findByIdAndIsActive(Long id, boolean activeFlag);
+
+    List<InvoiceEntity> findByDueDateBeforeAndStatusAndIsActive(LocalDate currentDate, InvoiceStatusEnum status, boolean activeFlag);
 }

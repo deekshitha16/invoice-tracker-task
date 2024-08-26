@@ -11,12 +11,14 @@ import com.invoicetracking.invoicemanagement.dto.InvoiceResponseDTO;
 import com.invoicetracking.invoicemanagement.dto.ResponseDTO;
 import com.invoicetracking.invoicemanagement.entity.InvoiceEntity;
 import com.invoicetracking.invoicemanagement.exception.InvoiceNotFoundException;
+import com.invoicetracking.invoicemanagement.exception.NoOverdueInvoicesException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class InvoiceServiceImpl implements InvoiceService {
@@ -38,7 +40,7 @@ public class InvoiceServiceImpl implements InvoiceService {
 
     @Override
     public ResponseDTO getAllInvoices() {
-        List<InvoiceResponseDTO> invoiceList = invoiceDao.getAllInvoices()
+        List<InvoiceResponseDTO> invoiceList = invoiceDao.getAllInvoices(MessageConstant.ACTIVE_FLAG)
                 .stream().map(this::mapEntityToResponseDTO).toList();
         return ResponseDTO.builder().data(invoiceList).
                 message(MessageConstant.INVOICE_LIST_FETCHED).build();
@@ -50,16 +52,16 @@ public class InvoiceServiceImpl implements InvoiceService {
     }
 
     @Override
-    public ResponseDTO payInvoice(Long id, InvoicePaymentRequestDTO invoicePaymentRequestDTO) {
+    public ResponseDTO payInvoice(Long invoiceId, InvoicePaymentRequestDTO invoicePaymentRequestDTO) {
 
         // Fetch the invoice by ID, throw an exception if ID not found
-        InvoiceEntity invoiceEntity = invoiceDao.getInvoiceById(id)
+        InvoiceEntity invoiceEntity = invoiceDao.getInvoiceById(invoiceId, MessageConstant.ACTIVE_FLAG)
                 .orElseThrow(() -> new InvoiceNotFoundException(MessageConstant.INVALID_INVOICE));
         Double totalPaidAmount = invoiceEntity.getPaidAmount() + invoicePaymentRequestDTO.getAmount();
 
         invoiceEntity.setPaidAmount(totalPaidAmount);
 
-        // TODO: - can add the logic to validate if the due date is exceeded the current date before processing Payment
+        // TODO: - add the logic to validate if the due date is exceeded the current date before processing Payment
 
         if (invoiceEntity.getAmount().equals(totalPaidAmount)) {
             invoiceEntity.setStatus(InvoiceStatusEnum.PAID);
@@ -70,8 +72,11 @@ public class InvoiceServiceImpl implements InvoiceService {
 
     @Override
     public ResponseDTO processOverduePayment(InvoiceOverduePaymentRequestDTO invoiceOverduePaymentRequestDTO) {
-        List<InvoiceEntity> overdueInvoices = invoiceDao.getAllOverdueInvoices(LocalDate.now(),
-                InvoiceStatusEnum.PENDING);
+        List<InvoiceEntity> overdueInvoices = Optional.of(invoiceDao.getAllOverdueInvoices(LocalDate.now(),
+                        InvoiceStatusEnum.PENDING,MessageConstant.ACTIVE_FLAG))
+                .filter(invoices -> !invoices.isEmpty())
+                .orElseThrow(() -> new NoOverdueInvoicesException(MessageConstant.NO_OVERDUE_INVOICES));
+
         processOverDueInvoiceList(overdueInvoices, invoiceOverduePaymentRequestDTO);
         return ResponseDTO.builder().message(MessageConstant.OVERDUE_INVOICE_UPDATED).build();
 
@@ -83,7 +88,6 @@ public class InvoiceServiceImpl implements InvoiceService {
         LocalDate overdueDate = LocalDate.now().plusDays(invoiceOverduePaymentRequestDTO.getOverdueDays());
         overdueInvoices.forEach(invoice ->
         {
-
             InvoiceStatusEnum status = invoice.getPaidAmount() > 0
                     ? InvoiceStatusEnum.PAID : InvoiceStatusEnum.VOID;
 
@@ -96,6 +100,22 @@ public class InvoiceServiceImpl implements InvoiceService {
             updateInvoiceEntity.add(invoice);
         });
         invoiceDao.processOverDueInvoice(newInvoiceEntity, updateInvoiceEntity);
+    }
+
+    @Override
+    public ResponseDTO deleteInvoice(Long invoiceId)
+    {
+        // Fetch the invoice by ID, throw an exception if ID not found
+        InvoiceEntity invoiceEntity = invoiceDao.getInvoiceById(invoiceId,MessageConstant.ACTIVE_FLAG)
+                .orElseThrow(() -> new InvoiceNotFoundException(MessageConstant.INVALID_INVOICE));
+        // deactivating the record - soft delete
+        invoiceEntity.setActive(MessageConstant.INACTIVE_FLAG);
+      Long id =  processInvoice(invoiceEntity);
+        InvoiceCreateResponseDTO response = InvoiceCreateResponseDTO.builder().invoiceId(id).build();
+
+        return ResponseDTO.builder().data(response).
+                message(MessageConstant.INVOICE_DELETED).build();
+
     }
 
     private InvoiceEntity saveInvoiceDetails(LocalDate dueDate, Double amount) {

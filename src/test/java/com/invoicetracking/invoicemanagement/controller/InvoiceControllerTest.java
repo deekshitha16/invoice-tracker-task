@@ -80,4 +80,17 @@ class InvoiceControllerTest {
         assertNotNull(responseEntity);
         assertEquals(HttpStatus.OK, responseEntity.getStatusCode());
     }
+    
+    @Test
+    void testDeleteInvoice() {
+    	Long invoiceId = 1L;
+        ResponseDTO response = ResponseDTO.builder().message(MessageConstant.INVOICE_DELETED).build();
+        when(invoiceService.deleteInvoice(invoiceId)).thenReturn(response);
+        ResponseEntity<ResponseDTO> responseEntity = invoiceController.deleteInvoice(invoiceId);
+        assertNotNull(responseEntity);
+        assertEquals(HttpStatus.OK, responseEntity.getStatusCode());
+    	
+    }
+
+    	
 }

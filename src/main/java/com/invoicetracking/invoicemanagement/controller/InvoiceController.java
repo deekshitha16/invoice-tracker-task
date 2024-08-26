@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -33,14 +34,20 @@ public class InvoiceController {
         return new ResponseEntity<>(invoiceService.getAllInvoices(), HttpStatus.OK);
     }
 
-    @PostMapping("/{id}/payments")
-    public ResponseEntity<ResponseDTO> payInvoice(@PathVariable(value = "invoiceId") Long id, @Valid @RequestBody InvoicePaymentRequestDTO invoicePaymentRequestDTO) {
-        return new ResponseEntity<>(invoiceService.payInvoice(id, invoicePaymentRequestDTO), HttpStatus.OK);
+    @PostMapping("/{invoiceId}/payments")
+    public ResponseEntity<ResponseDTO> payInvoice(@PathVariable Long invoiceId, @Valid @RequestBody InvoicePaymentRequestDTO invoicePaymentRequestDTO) {
+        return new ResponseEntity<>(invoiceService.payInvoice(invoiceId, invoicePaymentRequestDTO), HttpStatus.OK);
     }
 
     @PostMapping("/process-overdue")
     public ResponseEntity<ResponseDTO> processOverduePayment(@Valid @RequestBody InvoiceOverduePaymentRequestDTO invoiceOverduePaymentRequestDTO) {
         return new ResponseEntity<>(invoiceService.processOverduePayment(invoiceOverduePaymentRequestDTO), HttpStatus.OK);
     }
+
+    @DeleteMapping("/{invoiceId}")
+    public ResponseEntity<ResponseDTO> deleteInvoice(@PathVariable Long invoiceId) {
+        return new ResponseEntity<>(invoiceService.deleteInvoice(invoiceId), HttpStatus.OK);
+    }
+
 
 }
